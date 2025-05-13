@@ -1,5 +1,5 @@
-compile = gcc
-flags = -Iinclude -Wall
+CC=gcc
+CFLAGS=-Iinclude -Wall
 
-mockgit: src/main.c src/init.c
-	$(compile) $(flags) src/main.c src/init.c -o mockgit
+minigit: src/main.c src/init.c
+	$(CC) $(CFLAGS) src/main.c src/init.c -o minigit
