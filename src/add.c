@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-unsigned char *hash(const unsigned char *filename, unsigned char *buffer){
+char *hash(const unsigned char *filename, unsigned char *buffer){
     FILE *file = fopen((const char *)filename, "rb");
     
     if (!file) {
@@ -34,14 +34,26 @@ unsigned char *hash(const unsigned char *filename, unsigned char *buffer){
     SHA256(content, filelen, buffer);
     free(content);
     fclose(file);
-    return buffer;  
+    
+    char *hex_output = malloc(SHA256_DIGEST_LENGTH * 2 + 1);
+    if (!hex_output) {
+        perror("Memory allocation failed");
+        exit(1);
+    }
+
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        sprintf((char *)&hex_output[i * 2], "%02x", buffer[i]);
+    }
+    hex_output[SHA256_DIGEST_LENGTH * 2] = '\0';
+
+    return hex_output;
 }   
 
-int addFile(const unsigned char *filename)
+int addFile(char *filename)
 {
     unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
 
-    hash(filename, hash_buffer);
+    printf(hash(filename, hash_buffer));
 
     if(hash(filename, hash_buffer) == NULL){
         perror("Error hashing file");

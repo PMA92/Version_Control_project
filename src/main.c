@@ -9,7 +9,15 @@ int main(int argc, char *argv[])
         printf("Usage: mockgit <command>\n");
         return 1;
     }
-
+    if (strcmp(argv[1], "add") == 0)
+    {
+        if (argc < 3)
+        {
+            printf("Usage: mockgit add <filename>\n");
+            return 1;
+        }
+        return addFile(argv[2]);
+    }
     if (strcmp(argv[1], "init") == 0)
     {
         return makeInitFiles();
