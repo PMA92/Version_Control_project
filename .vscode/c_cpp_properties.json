@@ -3,9 +3,10 @@
         {
             "name": "windows-gcc-x86",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/opt/homebrew/opt/openssl@3/include"
             ],
-            "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
+            "compilerPath": "/usr/bin/clang++",
             "cStandard": "${default}",
             "cppStandard": "${default}",
             "intelliSenseMode": "windows-gcc-x86",
