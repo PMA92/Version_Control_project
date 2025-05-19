@@ -11,5 +11,6 @@ int addFile(const char *filename)
         return 1;
     }
 
+    
     return 0;
 }

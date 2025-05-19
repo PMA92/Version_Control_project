@@ -6,13 +6,14 @@
 int makeInitFiles()
 {
     const char *initFiles[] = {
-        ".mockgit"
-        ".mockgit/commits"
-        ".mockgit/blobs"};
+        ".mockgit",
+        ".mockgit/commits",
+        ".mockgit/blobs",
+    };
 
     for (int i = 0; i < 3; i++)
     {
-        if (mkdir(initFiles[i]) != 0)
+        if (mkdir(initFiles[i], 0777) != 0)
         {
             perror("Error creating directory");
             return 1;

@@ -1,5 +1,8 @@
-CC=gcc
+CC=cc
 CFLAGS=-Iinclude -Wall
 
-minigit: src/main.c src/init.c
-	$(CC) $(CFLAGS) src/main.c src/init.c -o minigit
+SRC=src/main.c src/init.c
+OUT=mockgit
+
+$(OUT): $(SRC)
+	$(CC) $(CFLAGS) $(SRC) -o $(OUT)
