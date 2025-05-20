@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
     }
     if (strcmp(argv[1], "add") == 0)
     {
+        printf("Adding file: %s\n", argv[2]);
         if (argc < 3)
         {
             printf("Usage: mockgit add <filename>\n");
