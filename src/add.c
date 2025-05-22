@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-char *hash(FILE *file, unsigned char *buffer){    
+char *hash(FILE *file, unsigned char *buffer, unsigned char **outContent, long *outContentLen){    
     if (!file) {
         perror("Error opening file");
         exit(1);
@@ -30,7 +30,6 @@ char *hash(FILE *file, unsigned char *buffer){
     }
     
     SHA256(content, filelen, buffer);
-    free(content);
     
     char *hex_output = malloc(SHA256_DIGEST_LENGTH * 2 + 1);
     if (!hex_output) {
@@ -43,12 +42,16 @@ char *hash(FILE *file, unsigned char *buffer){
     }
     hex_output[SHA256_DIGEST_LENGTH * 2] = '\0';
 
+    *outContent = content;
+    *outContentLen = filelen;
+
     return hex_output;
 }   
 
 int addFile(char *filename)
 {
     FILE *file = fopen(filename, "rb");
+    
     if (!file) {
         perror("Error opening file");
         return 1;
@@ -56,11 +59,16 @@ int addFile(char *filename)
     else{
         printf("File opened: %s\n", filename);
     }
+    
     unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
 
-    char *hash_hex = hash(file, hash_buffer);
+    unsigned char *outContent = NULL;
+    long outContentLen = 0;
 
-    rewind(file);
+    char *hash_hex = hash(file, hash_buffer, &outContent, &outContentLen);
+    fclose(file);
+
+
     char newBlobName[256];
     sprintf(newBlobName, ".mockgit/blobs/%s", hash_hex);
     
@@ -72,13 +80,12 @@ int addFile(char *filename)
         return 1;
     }
     
-    int c;
-    while ((c = fgetc(file)) != EOF)
-    {
-        fputc(c, newBlob);  
+    if (fwrite(outContent, 1, outContentLen, newBlob) != outContentLen) {
+        perror("Error writing to blob file");
+        fclose(newBlob);
+        free(hash_hex);
+        free(outContent);
+        return 1;
     }
-    free(hash_hex); 
-    fclose(newBlob);
-    fclose(file);
     return 0;
 }
