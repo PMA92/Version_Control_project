@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define TABLE_SIZE 1000
 
@@ -181,8 +182,8 @@ char *hashToBlob(FILE *file, unsigned char *buffer, unsigned char **outContent, 
 
 int addFile(char *filename)
 {
+    // blobbing
     FILE *file = fopen(filename, "rb");
-
 
     if (!file) {
         perror("Error opening file");
@@ -205,6 +206,13 @@ int addFile(char *filename)
     char newBlobName[256];
     sprintf(newBlobName, ".mockgit/blobs/%s", hash_hex);
     
+    if (access(newBlobName, F_OK) == 0) {
+        printf("Blob already exists: %s\n", newBlobName);
+    } else {
+        FILE *newBlob = fopen(newBlobName, "wb");
+    // write contents as before
+    }   
+
     FILE *newBlob = fopen(newBlobName, "wb");
     
     if (!newBlob) {
