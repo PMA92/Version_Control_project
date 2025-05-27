@@ -5,56 +5,137 @@
 
 #define TABLE_SIZE 1000
 
-typedef struct index{
+typedef struct {
     char *filename;
     char *hash;
 } Index;
 
 typedef struct hashtable{
-    Index *files[TABLE_SIZE];
+    Index **files;
+    int currentTableSize;
 } HashTable;
+
+unsigned int hash(const char *key) {
+    unsigned int hash = 5381;
+    int c;
+
+    while ((c = *key++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash % TABLE_SIZE;
+}
 
 HashTable *createTable(){
     HashTable *table = malloc(sizeof(HashTable));
     if (!table) {
-        perror("Memory allocation failed");
+        perror("Memory allocation failed at creating table");
         exit(1);
     }
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        table->files[i] = NULL;
+    table->files = calloc(TABLE_SIZE, sizeof(Index *));
+    if (!table->files) {
+        perror("Memory allocation failed at sizing files array");
+        free(table);
+        exit(1);
     }
+    table->currentTableSize = 0;
     return table;
 }
 
-HashTable *searchTable(HashTable *table, char *filename){
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        if (table->files[i] != NULL && strcmp(table->files[i]->filename, filename) == 0) {
-            return table->files[i];
+void freeTable(HashTable *table){
+    if (table == NULL) {
+        return;
+    }
+    if (table->files != NULL) {
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            if (table->files[i] != NULL) {
+                free(table->files[i]->filename);
+                free(table->files[i]->hash);
+                free(table->files[i]);
+            }
         }
+        free(table->files);
+    }
+    free(table);
+}
+
+char *searchTable(HashTable *table, char *filename){
+    if (table == NULL || table->files == NULL) {
+        fprintf(stderr, "Table is not initialized.\n");
+        return NULL;
+    }
+    unsigned int tableHash = hash(filename);
+    if(table->files[tableHash] == NULL) {
+        fprintf(stderr, "File not found in table.\n");
+        return NULL;
+    }
+    if (strcmp(table->files[tableHash]->filename, filename) == 0) {
+        return table->files[tableHash]->filename;
     }
     return NULL;
 }
 
-HashTable *appendFile(HashTable *table, Index *index){
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        if (table->files[i] == NULL) {
-            table->files[i] = index;
-            return table;
-        }
+int insertItem(HashTable *table, char *filename, char *blobHash) {
+    unsigned int tableHash = hash(filename);
+    
+    Index *newFile = malloc(sizeof(Index));
+    if (!newFile) {
+        perror("Memory allocation failed at inserting item");
+        return 1;
     }
+    newFile->filename = strdup(filename);
+    newFile->hash = strdup(blobHash);
+    
+    if (!newFile->filename || !newFile->hash) {
+        perror("Memory allocation failed at duplicating filename or hash");
+        free(newFile->filename);
+        free(newFile->hash);
+        free(newFile);
+        return 1;
+    }
+
+    if (newFile->filename == NULL) {
+        free(newFile);
+        return 0;
+    }
+
+    if (newFile->hash == NULL) {
+        free(newFile->filename);
+        free(newFile->hash);
+        return 0;
+    }
+
+    if (table->files[tableHash] != NULL) {
+        free(table->files[tableHash]->filename);
+        free(table->files[tableHash]->hash);
+        free(table->files[tableHash]);
+    }
+
+    table->files[tableHash] = newFile;
+    table->currentTableSize++;
+    return 0;
 }
 
-HashTable *removeFile(HashTable *table, char *filename){
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        if (table->files[i] != NULL && strcmp(table->files[i]->filename, filename) == 0) {
-            free(table->files[i]);
-            table->files[i] = NULL;
-            return table;
+int removeFile(HashTable *table, char *filename){
+    if (table == NULL || table->files == NULL) {
+        fprintf(stderr, "Table is not initialized.\n");
+        exit(1);
+    }
+
+    unsigned int tableHash = hash(filename);
+    if (table->files[tableHash] != NULL){
+        if (strcmp(table->files[tableHash]->filename, filename) == 0) {
+            free(table->files[tableHash]->filename);
+            free(table->files[tableHash]->hash);
+            free(table->files[tableHash]);
+            table->files[tableHash] = NULL;
+            table->currentTableSize--;
+            return 1;
         }
     }
+    return 0;
 }
 
-char *hash(FILE *file, unsigned char *buffer, unsigned char **outContent, long *outContentLen){    
+char *hashToBlob(FILE *file, unsigned char *buffer, unsigned char **outContent, long *outContentLen){    
     if (!file) {
         perror("Error opening file");
         exit(1);
@@ -101,14 +182,7 @@ char *hash(FILE *file, unsigned char *buffer, unsigned char **outContent, long *
 int addFile(char *filename)
 {
     FILE *file = fopen(filename, "rb");
-    
-    Index *index = malloc(sizeof(Index));
-    index->filename = filename;
-    index->hash = NULL;
-    if (!index) {
-        perror("Memory allocation failed");
-        return 1;
-    }
+
 
     if (!file) {
         perror("Error opening file");
@@ -123,20 +197,8 @@ int addFile(char *filename)
     unsigned char *outContent = NULL;
     long outContentLen = 0;
 
-    char *hash_hex = hash(file, hash_buffer, &outContent, &outContentLen);
+    char *hash_hex = hashToBlob(file, hash_buffer, &outContent, &outContentLen);
     fclose(file);
-
-    index->hash = hash_hex;
-
-    HashTable *table = malloc(sizeof(HashTable));
-    if (!table) {
-        perror("Memory allocation failed");
-        free(index);
-        free(hash_hex);
-        free(outContent);
-        return 1;
-    }
-
 
 
 
@@ -159,19 +221,48 @@ int addFile(char *filename)
         return 1;
     }
     
-    HashTable *existingIndex = searchTable(table, filename);
+    //indexing
+    FILE *indexFile = fopen(".mockgit/index", "r+");   
 
-    if (!existingIndex) {
-        fopen(".mockgit/index", "a");
-        //read and add the filename and hash to the index file 
-        table = appendFile(table, index);
-        printf("File added: %s\n", filename);
-    } else {
-        printf("File already exists in the index: %s\n", filename);
-        free(index->hash);
-        free(index);
-    }  
+    HashTable *table = createTable();
     
+    if (!indexFile) {
+        perror("Error opening index file");
+        exit(1);
+    }
+    else {
+        printf("Index file opened successfully.\n");
+    }
+
+    char line[256];
+    char currentLineFilename[128];
+    char currentLineHash[65];
+
+
+
+    while (fgets(line, sizeof(line), indexFile)) {
+        if (sscanf(line, "%s %s", currentLineFilename, currentLineHash) == 2) {
+            insertItem(table, currentLineFilename, currentLineHash);
+        }
+    }
+
+
+    rewind(indexFile);
+    insertItem(table, filename, hash_hex);
     
+
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        if (table->files[i] != NULL) {
+            fwrite(table->files[i]->filename, 1, strlen(table->files[i]->filename), indexFile);
+            fwrite(" ", 1, 1, indexFile);
+            fwrite(table->files[i]->hash, 1, strlen(table->files[i]->hash), indexFile);
+            fwrite("\n", 1, 1, indexFile);
+        }
+    }
+    fclose(newBlob);
+    fclose(indexFile);
+
+    freeTable(table);
     return 0;
+
 }
