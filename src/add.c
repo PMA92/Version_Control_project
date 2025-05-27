@@ -271,6 +271,7 @@ int addFile(char *filename)
     fclose(indexFile);
 
     freeTable(table);
+    printf("Staged %s", filename);
     return 0;
 
 }
