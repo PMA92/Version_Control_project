@@ -180,19 +180,73 @@ char *hashToBlob(FILE *file, unsigned char *buffer, unsigned char **outContent, 
     return hex_output;
 }   
 
-int addFiles(int fileCount, char **fileList) {
-    // Reuse the index file and table for all files
-    FILE *indexFile = fopen(".mockgit/index", "r+");
-    if (!indexFile) {
-        perror("Error opening index file");
+int addFile(char *filename)
+{
+    // blobbing
+    FILE *file = fopen(filename, "rb");
+
+    if (!file) {
+        perror("Error opening file");
+        return 1;
+    } 
+    else{
+        printf("File opened: %s\n", filename);
+    }
+    
+    unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
+
+    unsigned char *outContent = NULL;
+    long outContentLen = 0;
+
+    char *hash_hex = hashToBlob(file, hash_buffer, &outContent, &outContentLen);
+    fclose(file);
+
+
+
+    char newBlobName[256];
+    sprintf(newBlobName, ".mockgit/blobs/%s", hash_hex);
+    
+    if (access(newBlobName, F_OK) == 0) {
+        printf("Blob already exists: %s\n", newBlobName);
+    } else {
+        FILE *newBlob = fopen(newBlobName, "wb");
+    // write contents as before
+    }   
+
+    FILE *newBlob = fopen(newBlobName, "wb");
+    
+    if (!newBlob) {
+        perror("Error creating blob file");
+        free(hash_hex);
         return 1;
     }
+    
+    if (fwrite(outContent, 1, outContentLen, newBlob) != outContentLen) {
+        perror("Error writing to blob file");
+        fclose(newBlob);
+        free(hash_hex);
+        free(outContent);
+        return 1;
+    }
+    
+    //indexing
+    FILE *indexFile = fopen(".mockgit/index", "r+");   
 
     HashTable *table = createTable();
+    
+    if (!indexFile) {
+        perror("Error opening index file");
+        exit(1);
+    }
+    else {
+        printf("Index file opened successfully.\n");
+    }
 
     char line[256];
     char currentLineFilename[128];
     char currentLineHash[65];
+
+
 
     while (fgets(line, sizeof(line), indexFile)) {
         if (sscanf(line, "%s %s", currentLineFilename, currentLineHash) == 2) {
@@ -200,60 +254,24 @@ int addFiles(int fileCount, char **fileList) {
         }
     }
 
-    for (int i = 0; i < fileCount; i++) {
-        char *filename = fileList[i];
-        FILE *file = fopen(filename, "rb");
-        if (!file) {
-            perror("Error opening file");
-            continue;
-        }
 
-        unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
-        unsigned char *outContent = NULL;
-        long outContentLen = 0;
-
-        char *hash_hex = hashToBlob(file, hash_buffer, &outContent, &outContentLen);
-        fclose(file);
-
-        char newBlobName[256];
-        sprintf(newBlobName, ".mockgit/blobs/%s", hash_hex);
-
-        if (access(newBlobName, F_OK) != 0) {
-            FILE *newBlob = fopen(newBlobName, "wb");
-            if (!newBlob) {
-                perror("Error creating blob file");
-                free(hash_hex);
-                continue;
-            }
-
-            if (fwrite(outContent, 1, outContentLen, newBlob) != outContentLen) {
-                perror("Error writing to blob file");
-                fclose(newBlob);
-                free(hash_hex);
-                free(outContent);
-                continue;
-            }
-            fclose(newBlob);
-        } else {
-            printf("Blob already exists: %s\n", newBlobName);
-        }
-
-        insertItem(table, filename, hash_hex);
-        printf("Staged %s\n", filename);
-        free(hash_hex);
-        free(outContent);
-    }
-
-    // Rewrite index
     rewind(indexFile);
-    ftruncate(fileno(indexFile), 0);
+    insertItem(table, filename, hash_hex);
+    
+
     for (int i = 0; i < TABLE_SIZE; i++) {
         if (table->files[i] != NULL) {
-            fprintf(indexFile, "%s %s\n", table->files[i]->filename, table->files[i]->hash);
+            fwrite(table->files[i]->filename, 1, strlen(table->files[i]->filename), indexFile);
+            fwrite(" ", 1, 1, indexFile);
+            fwrite(table->files[i]->hash, 1, strlen(table->files[i]->hash), indexFile);
+            fwrite("\n", 1, 1, indexFile);
         }
     }
-
+    fclose(newBlob);
     fclose(indexFile);
+
     freeTable(table);
+    printf("Staged %s", filename);
     return 0;
+
 }
