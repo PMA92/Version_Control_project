@@ -2,6 +2,7 @@
 #define INIT_H
 
 int makeInitFiles();
-int addFile(char *filename);
+int addFiles(int fileCount, char **fileList);
+int commit();
 
 #endif
