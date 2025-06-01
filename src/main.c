@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
             printf("Usage: mockgit add <filename>\n");
             return 1;
         }
-        return addFiles(argv[2]);
+        return addFiles(argc - 2, &argv[2]);
     }
     if (strcmp(argv[1], "init") == 0)
     {
