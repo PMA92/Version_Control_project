@@ -3,6 +3,6 @@
 
 int makeInitFiles();
 int addFiles(int fileCount, char **fileList);
-int commit();
+int commit(char *type, char *message);
 
 #endif

@@ -9,6 +9,9 @@ int main(int argc, char *argv[])
         printf("Usage: mockgit <command>\n");
         return 1;
     }
+    if (strcmp(argv[1], "commit") == 0){
+        return commit(argv[2], argv[3]);
+    }
     if (strcmp(argv[1], "add") == 0)
     {
         printf("Adding file: %s\n", argv[2]);
