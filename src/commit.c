@@ -76,7 +76,7 @@ int commit(char *type, char *message) {
     }
     printf("Committed changes with message: %s\n", message);
     printf("Commited Files: ");
-    int fileIndex = 0;
+    int fileIndex = 1;
     for (int i = 0; i < TABLE_SIZE; i++) {
         if (table->files[i] != NULL) {
             char currentString[256];

@@ -9,10 +9,13 @@ int main(int argc, char *argv[])
         printf("Usage: mockgit <command>\n");
         return 1;
     }
-    if (strcmp(argv[1], "commit") == 0){
+    if (strcmp(argv[1], "log") == 0){
+        return logCommits();
+    }
+    else if (strcmp(argv[1], "commit") == 0){
         return commit(argv[2], argv[3]);
     }
-    if (strcmp(argv[1], "add") == 0)
+    else if (strcmp(argv[1], "add") == 0)
     {
         printf("Adding file: %s\n", argv[2]);
         if (argc < 3)
@@ -22,7 +25,7 @@ int main(int argc, char *argv[])
         }
         return addFiles(argc - 2, &argv[2]);
     }
-    if (strcmp(argv[1], "init") == 0)
+    else if (strcmp(argv[1], "init") == 0)
     {
         return makeInitFiles();
     }
