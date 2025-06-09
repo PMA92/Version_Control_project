@@ -5,6 +5,7 @@
 #include "hashtable.h"
 #include "time.h"
 #include "openssl/sha.h"
+#include "init.h"
 
 int commit(char *type, char *message) {
     FILE *indexFile = fopen(".mockgit/index", "r");
@@ -74,13 +75,20 @@ int commit(char *type, char *message) {
     } else {
         perror("Invalid commit type. Use -m for message.");
     }
+    
+    
+    
     printf("Committed changes with message: %s\n", message);
     printf("Commited Files: ");
     int fileIndex = 1;
     for (int i = 0; i < TABLE_SIZE; i++) {
+        unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
+        unsigned char *outContent = NULL;
+        long outContentLen = 0;
         if (table->files[i] != NULL) {
             char currentString[256];
-            sprintf(currentString, "File %d: %s\n", fileIndex++, table->files[i]->filename);
+            FILE *curFile = fopen(table->files[i]->filename, "rb"); 
+            sprintf(currentString, "File %d: %s %s\n", fileIndex++, table->files[i]->filename, hashToBlob(curFile, hash_buffer, &outContent, &outContentLen));
             printf("%s ", table->files[i]->filename);
             strcat(commitContent, currentString);
         }
