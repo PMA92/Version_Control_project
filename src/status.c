@@ -6,6 +6,59 @@
 #include <dirent.h>
 #include <openssl/sha.h>
 
+void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commitedTable, 
+    char ***stagedFiles, size_t *stagedCount, char ***modifiedFiles, 
+    size_t *modifiedCount, char ***untrackedFiles, size_t *untrackedCount, unsigned char *hash_buffer, unsigned char **outContent, long *outContentLen) {
+    
+    if (strncmp(thisDir, "./.git", 5) == 0) {
+        return; // Skip the .mockgit directory
+    }
+    DIR *workingDir = opendir(thisDir);
+    struct dirent *entry;
+    
+
+    while ((entry = readdir(workingDir))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+            continue;
+        }
+        char fullPath[512];
+        snprintf(fullPath, sizeof(fullPath), "%s/%s", thisDir, entry->d_name);
+        if (entry->d_type == DT_DIR) {  
+            processFileSearch(fullPath, stagedTable, commitedTable, stagedFiles, stagedCount, modifiedFiles, modifiedCount, untrackedFiles, untrackedCount, hash_buffer, outContent, outContentLen);
+        }
+        else {
+            char *curFilename = fullPath;
+            if (strncmp(curFilename, "./", 2) == 0) {
+                curFilename += 2;
+            }
+            FILE *curFile = fopen(fullPath, "rb");
+            if (!curFile) {
+                perror(fullPath);
+                continue;
+            }
+            char *curFileHash = hashToBlob(curFile, hash_buffer, outContent, outContentLen);
+            fclose(curFile);
+            if (searchTable(stagedTable, curFilename) != NULL) {
+                if (searchTable(commitedTable, curFilename) == NULL) {
+                    *stagedFiles = realloc(*stagedFiles, sizeof(char*) * (*stagedCount + 1));
+                    (*stagedFiles)[(*stagedCount)++] = strdup(curFilename);
+                }
+            }
+            else if (searchTable(commitedTable, curFilename) != NULL ){  
+                if (strcmp(curFileHash, searchTable(commitedTable, curFilename)) != 0){
+                    *modifiedFiles = realloc(*modifiedFiles, sizeof(char*) * (*modifiedCount + 1));
+                    (*modifiedFiles)[(*modifiedCount)++] = strdup(curFilename);
+                }
+            else {
+                *untrackedFiles = realloc(*untrackedFiles, sizeof(char*) * (*untrackedCount + 1));
+                (*untrackedFiles)[(*untrackedCount)++] = strdup(curFilename);
+            }
+        }
+        }
+        }
+    closedir(workingDir);
+
+}
 
 
 int status() {
@@ -55,29 +108,71 @@ int status() {
     HashTable *commitedTable = createTable();
     if (latestCommit){
         while (fgets(line, sizeof(line), latestCommit)){
-            if (sscanf(line, "%127s %64s", filename, hash) == 2) {
+            if (sscanf(line, "File %*d: %127s %64s", filename, hash) == 2) {
                 insertItem(commitedTable, filename, hash);
             } 
         }
     }
 
-    DIR *workingDir = opendir(".");
-
-    struct dirent *entry;
-
     unsigned char hash_buffer[SHA256_DIGEST_LENGTH];
     unsigned char *outContent = NULL;
     long outContentLen = 0;
 
-    while (entry = readdir(workingDir)) {
-        if (entry->d_name[0] == ".") continue;
-        char *filename = entry->d_name;
-        char curFileHash = hashToBlob(filename, hash_buffer, &outContent, &outContentLen);
 
-        if (searchTable(commitedTable, filename) != NULL ){
-            
-        }
-        }
+    char **stagedFiles = NULL;
+    char **modifiedFiles = NULL;
+    char **untrackedFiles = NULL;
+
+    size_t stagedCount = 0, modifiedCount = 0, untrackedCount = 0;
     
+    
+    char *currentDir = ".";
+
+    processFileSearch(currentDir, stagedTable, commitedTable, &stagedFiles, &stagedCount, &modifiedFiles, &modifiedCount, &untrackedFiles, &untrackedCount, hash_buffer, &outContent, &outContentLen);
+    
+    printf("Staged files:\n");
+    if (stagedCount == 0) {
+        printf("\tNo staged files.\n");
+    }
+    else {
+        for (size_t i = 0; i < stagedCount; i++) {
+            printf("\n\t%s", stagedFiles[i]);
+        }
+    }
+    printf("\n\nModified files:\n");
+    if (modifiedCount == 0) {
+        printf("\tNo modified files.\n");
+    }
+    else {
+        for (size_t i = 0; i < modifiedCount; i++) {
+            printf("\n\t%s", modifiedFiles[i]);
+        }
+    }
+    printf("\n\nUntracked files:\n");
+    if (untrackedCount == 0) {
+        printf("\tNo untracked files.\n");
+    }
+    else {
+        for (size_t i = 0; i < untrackedCount; i++) {
+            printf("\n\t%s", untrackedFiles[i]);
+        }
+    }
+    printf("\n");
+    // Free allocated memory
+    for (size_t i = 0; i < stagedCount; i++) {
+        free(stagedFiles[i]);
+    }
+    for (size_t i = 0; i < modifiedCount; i++) {
+        free(modifiedFiles[i]);
+    }
+    for (size_t i = 0; i < untrackedCount; i++) {
+        free(untrackedFiles[i]);
+    }
+    freeTable(commitedTable);
+    freeTable(stagedTable);
+    fclose(indexFile);
+    fclose(latestCommit);
+    fclose(head);
+    return 0;
 }
 

@@ -9,6 +9,10 @@ int main(int argc, char *argv[])
         printf("Usage: mockgit <command>\n");
         return 1;
     }
+    if (strcmp(argv[1], "status") == 0)
+    {
+        return status();
+    }
     if (strcmp(argv[1], "log") == 0){
         return logCommits();
     }

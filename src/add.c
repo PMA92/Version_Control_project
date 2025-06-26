@@ -66,7 +66,8 @@ char *searchTable(HashTable *table, char *filename){
     }
     unsigned int tableHash = hash(filename);
     if(table->files[tableHash] == NULL) {
-        fprintf(stderr, "File not found in table.\n");
+        //fprintf(stderr, "File not found in table.\n");
+        //line above commented out for sake of status command
         return NULL;
     }
     if (strcmp(table->files[tableHash]->filename, filename) == 0) {
