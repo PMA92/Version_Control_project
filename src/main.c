@@ -4,10 +4,14 @@
 
 int main(int argc, char *argv[])
 {
+
     if (argc < 2)
     {
         printf("Usage: mockgit <command>\n");
         return 1;
+    }
+    if (strcmp(argv[1], "branch") == 0){
+        return branch(argv[2]);
     }
     if (strcmp(argv[1], "status") == 0)
     {
