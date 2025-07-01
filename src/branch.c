@@ -10,11 +10,10 @@ int branch(char *branchName) {
     }
     char headLine[256];
     if (fgets(headLine, sizeof(headLine), head)) {
-        printf("Current HEAD: %s\n", headLine);
+        char filePath[256];
         headLine[strcspn(headLine, "\n")] = 0;
         branchName[strcspn(branchName, "\n")] = 0; // Remove newline character if present
-        if (strncmp(headLine, "./mockgit/branches", strlen("./mockgit/branches")) == 0) {
-            printf("found branch file\n");
+        if (strncmp(headLine, "./.mockgit/branches", strlen("./.mockgit/branches")) == 0) {
             FILE *currentBranch = fopen(headLine, "r");
             char line[256];
             char *branchHash = fgets(line, sizeof(line), currentBranch);
@@ -24,8 +23,8 @@ int branch(char *branchName) {
                 fclose(head);
                 return 1;
             }
-            snprintf(branchHash, sizeof(line), "./mockgit/branches/%s", branchName);
-            FILE *newBranch = fopen(branchName, "w");
+            snprintf(filePath, sizeof(filePath), "./.mockgit/branches/%s", branchName);
+            FILE *newBranch = fopen(filePath, "w");
             if (!newBranch) {
                 perror("Error creating new branch file");
                 fclose(currentBranch);
@@ -39,10 +38,7 @@ int branch(char *branchName) {
             printf("Branch '%s' created successfully.\n", branchName);
         }
         else {
-            printf("No current branch found. Creating new branch '%s'.\n", branchName);
-            char filePath[256]; 
-            snprintf(filePath, sizeof(filePath), "./mockgit/branches/%s", branchName);
-            printf("%s", filePath);
+            snprintf(filePath, sizeof(filePath), "./.mockgit/branches/%s", branchName);
             FILE *newBranch = fopen(filePath, "w"); 
             if (!newBranch) {
                 perror("Error creating new branch file");
