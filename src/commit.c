@@ -9,7 +9,30 @@
 
 int commit(char *type, char *message) {
     FILE *indexFile = fopen(".mockgit/index", "r");
-    FILE *head = fopen(".mockgit/HEAD", "r+");
+    FILE *head = fopen(".mockgit/HEAD", "r");
+    
+    char headPath[128];
+    fgets(headPath, sizeof(headPath), head);  
+    headPath[strcspn(headPath, "\n")] = 0;
+    int detached = strncmp(headPath, "branches/", strlen("branches/")) != 0;
+    
+    printf("HEAD Path: %s\n", headPath);
+    char parentHash[128] = "";
+    if (detached) {
+        strncpy(parentHash, headPath, sizeof(parentHash));
+    } else {
+        char branchPath[256];
+        snprintf(branchPath, sizeof(branchPath), ".mockgit/%s", headPath);
+        FILE *branchFile = fopen(branchPath, "r");
+        if (branchFile) {
+            fgets(parentHash, sizeof(parentHash), branchFile);
+            parentHash[strcspn(parentHash, "\n")] = 0;
+            fclose(branchFile);
+        }
+    }
+
+    //snprintf(headPath, sizeof(headPath), ".mockgit/%s", headPath);
+
     if (!indexFile) {
         perror("Error opening index file");
         return 1;
@@ -38,23 +61,15 @@ int commit(char *type, char *message) {
     fclose(indexFile);
     FILE *inFl = fopen(".mockgit/index", "w");
     fclose(inFl);
-
+ 
     char commitContent[4096] = "";
-    
-    fseek(head, 0, SEEK_END);
-    long size = ftell(head);
-
-    char parentHash[65] = "";
-    char parentLine[128];
-    if (size != 0) {
-        fseek(head, 0, SEEK_SET);
-        fgets(parentHash, sizeof(parentHash), head);
-        snprintf(parentLine, sizeof(parentLine), "Parent: %s", parentHash);
+    if (strlen(parentHash) > 0) {
+        snprintf(line, sizeof(line), "Parent: %s\n", parentHash);
     } else {
-        snprintf(parentLine, sizeof(parentLine), "Parent: none");
+        snprintf(line, sizeof(line), "Parent: none\n");
     }
-    strcat(commitContent, parentLine);
-    strcat(commitContent, "\n");
+    strcat(commitContent, line);
+    
 
     time_t currentTime = time(NULL);
     char *timeString = ctime(&currentTime);
@@ -62,18 +77,14 @@ int commit(char *type, char *message) {
     strcat(commitContent, timeString);
 
 
-    if (strcmp(type, "-m") == 0) {
-        if (strcmp(message, "") == 0) {
-            fprintf(stderr, "Error: Commit message cannot be empty.\n");
-            freeTable(table);
-            return 1;
-        
-        } else {
-            strcat(commitContent, message);
-            strcat(commitContent, "\n");
-        }
+    if (strcmp(type, "-m") == 0 && strlen(message) > 0) {
+        strcat(commitContent, message);
+        strcat(commitContent, "\n");
     } else {
-        perror("Invalid commit type. Use -m for message.");
+        fprintf(stderr, "Error: Invalid or missing commit message.\n");
+        fclose(head);
+        freeTable(table);
+        return 1;
     }
     
     
@@ -87,10 +98,14 @@ int commit(char *type, char *message) {
         long outContentLen = 0;
         if (table->files[i] != NULL) {
             char currentString[256];
-            FILE *curFile = fopen(table->files[i]->filename, "rb"); 
-            sprintf(currentString, "File %d: %s %s\n", fileIndex++, table->files[i]->filename, hashToBlob(curFile, hash_buffer, &outContent, &outContentLen));
-            printf("%s ", table->files[i]->filename);
-            strcat(commitContent, currentString);
+            FILE *curFile = fopen(table->files[i]->filename, "rb");
+            if (curFile) {
+                sprintf(currentString, "File %d: %s %s\n", fileIndex++, table->files[i]->filename,
+                        hashToBlob(curFile, hash_buffer, &outContent, &outContentLen));
+                printf("%s ", table->files[i]->filename);
+                strcat(commitContent, currentString);
+                fclose(curFile);
+            }
         }
     }
 
@@ -109,15 +124,33 @@ int commit(char *type, char *message) {
     FILE *commitFile = fopen(commitFilePath, "w");
     if (!commitFile) {
         perror("Failed to create commit file");
+        fclose(head);
+        freeTable(table);
         return 1;
     }
     fprintf(commitFile, "%s", commitContent);
     fclose(commitFile);
-
-    fseek(head, 0, SEEK_SET);
-    ftruncate(fileno(head), 0);
     
-    fprintf(head, "%s", commitHashHex);
+    // Update HEAD or branch
+    if (detached) {
+        fseek(head, 0, SEEK_SET);
+        ftruncate(fileno(head), 0);
+        fprintf(head, "%s\n", commitHashHex);
+    } else {
+        char branchPath[256];
+        snprintf(branchPath, sizeof(branchPath), ".mockgit/%s", headPath);
+        printf("Updating branch file: %s\n", branchPath);
+        FILE *branchFile = fopen(branchPath, "w");
+        if (!branchFile) {
+            perror("Failed to update current branch file");
+            fclose(head);
+            freeTable(table);
+            return 1;
+        }
+        fprintf(branchFile, "%s\n", commitHashHex);
+        fclose(branchFile);
+    }
+
     fclose(head);
     freeTable(table);
     return 0;

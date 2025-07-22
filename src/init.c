@@ -26,7 +26,8 @@ int makeInitFiles()
         perror("Error creating HEAD file");
         return 1;
     }
-
+    fprintf(head, "branches/master");
+    fclose(head);
     FILE *index = fopen(".mockgit/index", "w");
     if (!index)
     {
