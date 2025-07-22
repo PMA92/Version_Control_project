@@ -16,8 +16,10 @@ int branch(char *branchName) {
         headLine[strcspn(headLine, "\n")] = 0;
         branchName[strcspn(branchName, "\n")] = 0; // Remove newline character if present
         printf("headLine: %s", headLine);
-        if (strncmp(headLine, "branches", strlen("branches")) == 0) {
-            FILE *currentBranch = fopen(headLine, "r");
+        if (strncmp(headLine, "branches/", 9) == 0) {
+            char currentBranchPath[256];
+            snprintf(currentBranchPath, sizeof(currentBranchPath), ".mockgit/%s", headLine);
+            FILE *currentBranch = fopen(currentBranchPath, "r");
             char line[256];
             char *branchHash = fgets(line, sizeof(line), currentBranch);
             if (!branchHash) {
@@ -38,6 +40,7 @@ int branch(char *branchName) {
             fprintf(newBranch, "%s", branchHash);
             fclose(newBranch);
             fclose(currentBranch);
+            fclose(head);
         }
         else {
             // HEAD is assumed to be a raw commit hash
@@ -63,9 +66,7 @@ int branch(char *branchName) {
         
             printf("Branch '%s' created successfully from detached HEAD.\n", branchName);
         }       
-        
         fclose(head);
-
         return 0;
 
     }
