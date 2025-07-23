@@ -10,6 +10,9 @@ int main(int argc, char *argv[])
         printf("Usage: mockgit <command>\n");
         return 1;
     }
+    if (strcmp(argv[1], "checkout") == 0){
+        return checkout(argv[2]);
+    }
     if (strcmp(argv[1], "branch") == 0){
         return branch(argv[2]);
     }

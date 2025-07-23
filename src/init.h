@@ -8,5 +8,6 @@ int logCommits();
 int status();
 char *hashToBlob(FILE *file, unsigned char *buffer, unsigned char **outContent, long *outContentLen);
 int branch(char *branchName);
+int checkout(char *input);
 
 #endif
