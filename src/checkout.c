@@ -3,33 +3,42 @@
 #include <stdlib.h>
 #include <dirent.h>
 
-char *findContent(char *directoryName, char *input)
-    snprintf(directoryName, sizeof(directoryName), ".mockgit/%s", directoryName)
-    DIR *directory = opendir(directoryName);
-
-    char *checkoutResult;
-    struct dirent *entry;
-    while(entry = readdir(directoryName)){
-        char *target;
-        char path[512];
-        snprintf(path, sizeof(path), "%s/%s", directoryName, entry->d_name);
-        char *currentFile = fopen(path, "r");
-        if (currentFile != NULL){
-            fgets(target, sizeof(target), currentFile);
-            if (strcmp(target, strcat("branches/", input))){
-                checkoutResult = target
-                break;
-            }                                                                                                                         
-        }
-    }
-    return checkoutBranch
 int checkout(char *input){
     //finding the target branch
-    char *checkoutBranch = findContent("branches", input)
-    //check if commit hash
-    if (strlen(checkoutBranch) == 0){
-        char *checkoutCommit = findContent("commits", input)
+    char fullPath[512];
+    snprintf(fullPath, sizeof(fullPath), ".mockgit/branches/%s", input);
+    FILE *inputFile = fopen(fullPath, "r");
+    if (inputFile == NULL) {
+        fprintf(stderr, "Error: Branch '%s' does not exist.\n", input);
+        fclose(inputFile);
+        fullPath[0] = '\0'; 
+        snprintf(fullPath, sizeof(fullPath), ".mockgit/commits/%s", input);
+        inputFile = fopen(fullPath, "r");
+        if (inputFile == NULL) {
+            fprintf(stderr, "Error: Commit '%s' does not exist.\n", input);
+            return 1; // Error code for branch or commit not found
+        }
+        else{
+            FILE *head = fopen(".mockgit/HEAD", "w");
+            FILE *head = fopen(".mockgit/HEAD", "w");
+            char *newHead = strcat("branches/", input);
+            fprintf(head, newHead);
+            fclose(head);
+            fclose(inputFile);
+            printf("Switched to branch '%s'.\n", input);
+        }
+    }    
+    else {
+        FILE *head = fopen(".mockgit/HEAD", "w");
+        char *newHead = strcat("branches/", input);
+        fprintf(head, newHead);
+        fclose(head);
+        fclose(inputFile);
+        printf("Switched to branch '%s'.\n", input);
     }
+
+
+ 
 
 
 
