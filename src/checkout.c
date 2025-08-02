@@ -20,9 +20,8 @@ int checkout(char *input){
         }
         else{
             FILE *head = fopen(".mockgit/HEAD", "w");
-            FILE *head = fopen(".mockgit/HEAD", "w");
             char *newHead = strcat("branches/", input);
-            fprintf(head, newHead);
+            fprintf(head, "%s", newHead);
             fclose(head);
             fclose(inputFile);
             printf("Switched to branch '%s'.\n", input);
@@ -30,19 +29,12 @@ int checkout(char *input){
     }    
     else {
         FILE *head = fopen(".mockgit/HEAD", "w");
-        char *newHead = strcat("branches/", input);
-        fprintf(head, newHead);
+        char newHead[512];
+        snprintf(newHead, sizeof(newHead), "branches/%s", input);
+        fprintf(head, "%s", newHead);
         fclose(head);
         fclose(inputFile);
         printf("Switched to branch '%s'.\n", input);
     }
-
-
- 
-
-
-
-
-
-
+    return 0;
 }
