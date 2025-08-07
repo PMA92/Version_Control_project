@@ -20,7 +20,8 @@ int checkout(char *input){
         }
         else{
             FILE *head = fopen(".mockgit/HEAD", "w");
-            char *newHead = strcat("branches/", input);
+            char newHead[512];
+            snprintf(newHead, sizeof(newHead), "branches/%s", input);
             fprintf(head, "%s", newHead);
             fclose(head);
             fclose(inputFile);

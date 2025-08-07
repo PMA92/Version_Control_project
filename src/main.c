@@ -2,25 +2,58 @@
 #include <string.h>
 #include "init.h"
 
-int main(int argc, char *argv[])
+int checkInput(int argc, char *argv[])
 {
-
     if (argc < 2)
     {
         printf("Usage: mockgit <command>\n");
         return 1;
     }
-    if (strcmp(argv[1], "checkout") == 0){
+    if (argc > 4)
+    {
+        printf("Too many arguments provided.\n");
+        return 1;
+    }
+    if (strlen(argv[1]) > 15)
+    {
+        printf("Command name is too long (> 65 characters).\n");
+        return 1;
+    }
+    if (strlen(argv[2]) > 65)
+    {
+        printf("Command action (i.e file name, commit message, etc) is too long (> 65 characters).\n");
+        return 1;
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    if (checkInput(argc, argv) != 0)
+    {
+        return 1;
+    }
+    else if (argc < 2)
+    {
+        printf("Usage: mockgit <command>\n");
+        return 1;
+    }
+    else if (argc > 2){
+        if(strlen(argv[3]) > 65){
+            printf("Command action (i.e file name, commit message, etc) is too long (> 65 characters).\n");
+        }
+    }
+    else if (strcmp(argv[1], "checkout") == 0){
         return checkout(argv[2]);
     }
-    if (strcmp(argv[1], "branch") == 0){
+    else if (strcmp(argv[1], "branch") == 0){
         return branch(argv[2]);
     }
-    if (strcmp(argv[1], "status") == 0)
+    else if (strcmp(argv[1], "status") == 0)
     {
         return status();
     }
-    if (strcmp(argv[1], "log") == 0){
+    else if (strcmp(argv[1], "log") == 0){
         return logCommits();
     }
     else if (strcmp(argv[1], "commit") == 0){
