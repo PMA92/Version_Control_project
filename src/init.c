@@ -9,15 +9,22 @@ int makeInitFiles()
         ".mockgit",
         ".mockgit/commits",
         ".mockgit/blobs",
+        ".mockgit/branches",
     };
-
-    for (int i = 0; i < 3; i++)
+    size_t length = sizeof(initFiles) / sizeof(initFiles[0]);
+    for (int i = 0; i < length; i++)
     {
         if (mkdir(initFiles[i], 0777) != 0)
         {
             perror("Error creating directory");
             return 1;
         }
+    }
+    FILE *master = fopen(".mockgit/branches/master", "w");
+    if (!master)
+    {
+        perror("Error creating master branch file");
+        return 1;
     }
 
     FILE *head = fopen(".mockgit/HEAD", "w");

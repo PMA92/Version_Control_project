@@ -10,10 +10,9 @@ int checkout(char *input){
     FILE *inputFile = fopen(fullPath, "r");
     if (inputFile == NULL) {
         fprintf(stderr, "Error: Branch '%s' does not exist.\n", input);
-        fclose(inputFile);
         fullPath[0] = '\0'; 
         snprintf(fullPath, sizeof(fullPath), ".mockgit/commits/%s", input);
-        inputFile = fopen(fullPath, "r");
+        inputFile = fopen(fullPath, "r"); 
         if (inputFile == NULL) {
             fprintf(stderr, "Error: Commit '%s' does not exist.\n", input);
             return 1; // Error code for branch or commit not found
@@ -21,7 +20,7 @@ int checkout(char *input){
         else{
             FILE *head = fopen(".mockgit/HEAD", "w");
             char newHead[512];
-            snprintf(newHead, sizeof(newHead), "branches/%s", input);
+            snprintf(newHead, sizeof(newHead), "commits/%s", input);
             fprintf(head, "%s", newHead);
             fclose(head);
             fclose(inputFile);
@@ -37,5 +36,6 @@ int checkout(char *input){
         fclose(inputFile);
         printf("Switched to branch '%s'.\n", input);
     }
+
     return 0;
 }

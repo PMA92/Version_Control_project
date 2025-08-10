@@ -10,7 +10,7 @@ void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commite
     char ***stagedFiles, size_t *stagedCount, char ***modifiedFiles, 
     size_t *modifiedCount, char ***untrackedFiles, size_t *untrackedCount, unsigned char *hash_buffer, unsigned char **outContent, long *outContentLen) {
     
-    if (strncmp(thisDir, "./.git", 5) == 0) {
+    if (strncmp(thisDir, "./.mockgit", 10) == 0) {
         return; // Skip the .mockgit directory
     }
     DIR *workingDir = opendir(thisDir);
