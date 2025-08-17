@@ -55,8 +55,6 @@ int updateWorkingDirectory(char *headRef){
         FILE *curBlob = fopen(blobPath, "rb");
         if (!curBlob) { fprintf(stderr, "Error: open blob %s\n", blobPath); fclose(currentCommit); fclose(idx); return 1; }
 
-        if (ensure_parent_dirs(filename) != 0) { fclose(curBlob); fclose(currentCommit); fclose(idx); return 1; }
-
         FILE *curFile = fopen(filename, "wb");
         if (!curFile) { perror("open out"); fclose(curBlob); fclose(currentCommit); fclose(idx); return 1; }
 
