@@ -75,6 +75,15 @@ int main(int argc, char *argv[]) {
         return commit(argv[2], argv[3]);
     }
 
+    //merge <branch>
+    if (strcmp(cmd, "merge") == 0) {
+        printf("Merging is not yet implemented.\n");
+        return 1;
+        if (argc != 3) { printf("Usage: mockgit merge <branch>\n"); return 1; }
+        if (!validate_len("branch name", argv[2], MAX_BRANCH_LEN)) return 1;
+        return merge(argv[2]);
+    }
+
     printf("Unknown command: %s\n", cmd);
     return 1;
 }

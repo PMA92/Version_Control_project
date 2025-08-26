@@ -4,71 +4,114 @@
 #include "hashtable.h"
 #include "init.h"
 
+// Parse "Parent: <hash>" or "Parent: none" from a commit file.
+// Returns 0 with outParent set, 1 if none, -1 on error.
+// parse "File N: <path> <blob>" lines into a hashtable: key=path, val=blob
+
+
+
+static int read_parent_of(const char *commitHash, char *outParent, size_t outsz) {
+    char path[512];
+    snprintf(path, sizeof(path), ".mockgit/commits/%s", commitHash);
+    FILE *cf = fopen(path, "r");
+    if (!cf) { perror(path); return -1; }
+
+    char line[512] = {0};
+    if (!fgets(line, sizeof(line), cf)) { fclose(cf); return -1; }
+    fclose(cf);
+    strip_nl(line);
+
+    // Expect "Parent: ..."
+    const char *p = strstr(line, "Parent:");
+    if (!p) return -1;
+    p += 7;
+    while (*p == ' ' || *p == '\t') ++p;
+
+    if (strncmp(p, "none", 4) == 0) return 1;
+
+    size_t n = strcspn(p, " \t\r\n");
+    if (n + 1 > outsz) return -1;
+    memcpy(outParent, p, n);
+    outParent[n] = '\0';
+    return 0;
+}
 
 int merge(char *branchname) {
-    //we need to get the lcc(last common commit) of the branch the user specifies, and the current head
-    HashTable *commitTable = createTable();
+    // 1) Read HEAD ref, resolve to tip commit
     FILE *head = fopen(".mockgit/HEAD", "r");
-    
-    if (!head) {
-        perror("Error opening HEAD file");
-        return 1;
-    }
-
-    //read head and go down commit change storing them in a hashtable
-    char commit[512];
-    char headRef[512];
-    fgets(headRef, sizeof(headRef), head);
-    if (strncmp(headRef, "branches/", 9) == 0) {
-        char headBranch[512];
-        snprintf(headBranch, sizeof(headBranch), ".mockgit/%s", headRef);
-        FILE *branchFile = fopen(headBranch, "r");
-        if (!branchFile) {
-            perror("Error opening branch file");
-            fclose(head);
-            return 1;
-        }
-        fgets(commit, sizeof(commit), branchFile);
-        fclose(branchFile);
-    }
-    else {
-        snprintf(commit, sizeof(commit), "%s", headRef);
-    }
-    insertItem(commitTable, commit, NULL);
-    char parent[512];
-    char targetLCC[512];
-    while (1) {
-        snprintf(parent, sizeof(parent), ".mockgit/commits/%s", commit);
-        FILE *commitFile = fopen(parent, "r");
-        fseek(commitFile, 8, SEEK_SET); 
-        fgets(parent, sizeof(parent), commitFile);
-        if (strcmp(parent, "none") == 0) {
-            break;
-        }
-        else {
-            insertItem(commitTable, parent, NULL);
-            fclose(commitFile);
-        }
-
-    
+    if (!head) { perror("HEAD"); return 1; }
+    char headRef[512] = {0};
+    if (!fgets(headRef, sizeof(headRef), head)) { fclose(head); return 1; }
     fclose(head);
-    //now check the branch 
+    strip_nl(headRef);
+
+    char oursTip[512] = {0};
+    if (strncmp(headRef, "branches/", 9) == 0) {
+        char headBranchPath[512];
+        snprintf(headBranchPath, sizeof(headBranchPath), ".mockgit/%s", headRef);
+        FILE *bf = fopen(headBranchPath, "r");
+        if (!bf) { perror(headBranchPath); return 1; }
+        if (!fgets(oursTip, sizeof(oursTip), bf)) { fclose(bf); return 1; }
+        fclose(bf);
+        strip_nl(oursTip);
+    } else {
+        snprintf(oursTip, sizeof(oursTip), "%s", headRef);
+        strip_nl(oursTip);
+    }
+
+    // 2) Build ancestor set of ours
+    HashTable *seen = createTable();
+    if (!seen) return 1;
+
+    char cur[512]; snprintf(cur, sizeof(cur), "%s", oursTip);
+    insertItem(seen, cur, "1");
+    for (;;) {
+        char parentHash[512] = {0};
+        int rc = read_parent_of(cur, parentHash, sizeof(parentHash));
+        if (rc == 1) break;           // Parent: none
+        if (rc != 0) { freeTable(seen); return 1; }
+        insertItem(seen, parentHash, "1");
+        snprintf(cur, sizeof(cur), "%s", parentHash);  // <-- advance!
+    }
+
+    // 3) Read target branch tip once
     char branchPath[512];
     snprintf(branchPath, sizeof(branchPath), ".mockgit/branches/%s", branchname);
-    FILE *branchFile = fopen(branchPath, "r");
-    if (!branchFile) {
+    FILE *br = fopen(branchPath, "r");
+    if (!br) {
         fprintf(stderr, "Error: Branch '%s' does not exist.\n", branchname);
-        freeTable(commitTable);
+        freeTable(seen);
         return 1;
     }
-    char branchCommit[512];
-    fgets(branchCommit, sizeof(branchCommit), branchFile);
-    fclose(branchFile);
-    if (searchTable(commitTable, branchCommit) != NULL) {
-        snprintf(targetLCC, sizeof(targetLCC), "%s", branchCommit);
-        break;
-    } 
+    char theirsTip[512] = {0};
+    if (!fgets(theirsTip, sizeof(theirsTip), br)) { fclose(br); freeTable(seen); return 1; }
+    fclose(br);
+    strip_nl(theirsTip);
+
+    // 4) Walk theirs upward until we hit an ancestor in the set
+    char lca[512] = {0};
+    snprintf(cur, sizeof(cur), "%s", theirsTip);
+    for (;;) {
+        if (searchTable(seen, cur) != NULL) {
+            snprintf(lca, sizeof(lca), "%s", cur);
+            break;
+        }
+        char parentHash[512] = {0};
+        int rc = read_parent_of(cur, parentHash, sizeof(parentHash));
+        if (rc == 1) { // none
+            fprintf(stderr, "merge: no common ancestor found.\n");
+            freeTable(seen);
+            return 1;
+        }
+        if (rc != 0) { freeTable(seen); return 1; }
+        snprintf(cur, sizeof(cur), "%s", parentHash);  // advance
     }
 
-    return 1;
+    printf("Last common commit (LCA) with '%s': %s\n", branchname, lca);
+    freeTable(seen);
+
+    //parse three manifests (BASE = LCA, OURS = HEAD tip, THEIRS = other branch tip)
+
+    //restore from
+    return 0;
 }

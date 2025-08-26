@@ -43,3 +43,9 @@ mockgit branch <branch-name>
 # Checkout to a branch or commit
 
 mockgit checkout <branch-name|commit-hash>
+
+### Future implementations
+
+Currently, checkout does not modify state, and there is not merge, so checking out simply shifts the head pointer.
+
+In the future, a merge feature is in implementation to allow for real branching features.

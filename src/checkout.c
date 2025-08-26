@@ -7,7 +7,7 @@ static int starts_with(const char *s, const char *pfx) {
 }
 
 
-static void strip_nl(char *s) {
+void strip_nl(char *s) {
     if (!s) return;
     size_t n = strlen(s);
     while (n && (s[n-1] == '\n' || s[n-1] == '\r')) s[--n] = '\0';
