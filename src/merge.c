@@ -8,7 +8,9 @@
 // Returns 0 with outParent set, 1 if none, -1 on error.
 // parse "File N: <path> <blob>" lines into a hashtable: key=path, val=blob
 
+static int compareFiles(FILE* f1, FILE* f2) {
 
+}
 
 static int read_parent_of(const char *commitHash, char *outParent, size_t outsz) {
     char path[512];
@@ -36,6 +38,11 @@ static int read_parent_of(const char *commitHash, char *outParent, size_t outsz)
     return 0;
 }
 
+
+//find ours, theirs and base
+//ours = head's tip (the current commit from head)
+//theirs = commit at the tip of the branch being merged in
+//base = last common ancestor commit of ours and theirs
 int merge(char *branchname) {
     // 1) Read HEAD ref, resolve to tip commit
     FILE *head = fopen(".mockgit/HEAD", "r");
@@ -110,7 +117,34 @@ int merge(char *branchname) {
     printf("Last common commit (LCA) with '%s': %s\n", branchname, lca);
     freeTable(seen);
 
-    //parse three manifests (BASE = LCA, OURS = HEAD tip, THEIRS = other branch tip)
+    //parse three blobs (BASE = LCA, OURS = HEAD tip, THEIRS = other branch tip)
+    
+
+    size_t pathLength = strlen(".mockgit/commits/") + 65;
+    char *lcaPath = malloc(pathLength); char *oursPath = malloc(pathLength); char *theirsPath = malloc(pathLength);
+
+    snprintf(lcaPath, pathLength, ".mockgit/commits/%s", lca);
+    snprintf(oursPath, pathLength, ".mockgit/commits/%s", oursTip);
+    snprintf(theirsPath, pathLength, ".mockgit/commits/%s", theirsTip);
+
+    FILE *lcaFile = fopen(lcaPath, "r");
+    FILE *oursFile = fopen(oursPath, "r");
+    FILE *theirsFile = fopen(theirsPath, "r");
+
+    if (!oursFile || !theirsFile || !lcaFile) {
+        perror("Invalid file open, terminating");
+        return 0;
+    }
+
+    /*
+    If OURS == THEIRS → nothing to do (already the same).
+
+    If OURS == BASE and THEIRS != BASE → take THEIRS as the result.
+
+    If THEIRS == BASE and OURS != BASE → take OURS as the result.
+    */
+
+)
 
     //restore from
     return 0;
