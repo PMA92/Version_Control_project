@@ -8,8 +8,33 @@
 // Returns 0 with outParent set, 1 if none, -1 on error.
 // parse "File N: <path> <blob>" lines into a hashtable: key=path, val=blob
 
-static int compareFiles(FILE* f1, FILE* f2) {
+static HashTable* filesToMerge(FILE *commitFile){
+    char line[512];
+    HashTable *blobAndHash = createTable();
+    int tableCount = 0;
+    while (fgets(line, sizeof(line), commitFile)) {
+        if (strncmp(line, "File ", 5) == 0){
+            int num = 0;
+            char filename[512], hash[128];
+            if (sscanf(line, "File %d: %511s %127s", &num, filename, hash) == 3) {
+                tableCount++;
+                insertItem(blobAndHash, filename, hash);
+                blobAndHash->currentTableSize = tableCount;
+            }
+        }
+    }
+    return blobAndHash;
+}
 
+static int diffFileChecker(FILE* f1, FILE* f2) {
+    for (int i = 0; i != EOF; i++){
+        int ch1 = fgetc(f1);
+        int ch2 = fgetc(f2);
+        if (ch1 != ch2) {
+            return 1; // files differ
+        }
+    }
+    return 0;
 }
 
 static int read_parent_of(const char *commitHash, char *outParent, size_t outsz) {
@@ -127,11 +152,13 @@ int merge(char *branchname) {
     snprintf(oursPath, pathLength, ".mockgit/commits/%s", oursTip);
     snprintf(theirsPath, pathLength, ".mockgit/commits/%s", theirsTip);
 
-    FILE *lcaFile = fopen(lcaPath, "r");
-    FILE *oursFile = fopen(oursPath, "r");
-    FILE *theirsFile = fopen(theirsPath, "r");
+    FILE *lcaCommit = fopen(lcaPath, "r");
+    FILE *oursCommit = fopen(oursPath, "r");
+    FILE *theirsCommit = fopen(theirsPath, "r");
 
-    if (!oursFile || !theirsFile || !lcaFile) {
+
+
+    if (!oursCommit || !theirsCommit || !lcaCommit) {
         perror("Invalid file open, terminating");
         return 0;
     }
@@ -143,9 +170,38 @@ int merge(char *branchname) {
 
     If THEIRS == BASE and OURS != BASE → take OURS as the result.
     */
+    if (diffFileChecker(oursCommit, theirsCommit) ) {
+        printf("Branch matches working directory, nothing to do.\n");
+        return 0;
+    }
+    else if (diffFileChecker(oursCommit, lcaCommit) && !diffFileChecker(theirsCommit, lcaCommit)) {
+        HashTable *theirsFiles = filesToMerge(theirsCommit);
+        for (int i = 0; i < theirsFiles->currentTableSize; i++) {
+            char filePath[512];
+            char *curWorkingPath = theirsFiles->files[i]->filename;
+            snprintf(filePath, sizeof(filePath), ".mockgit/blobs/%s", curWorkingPath);
+            
+            FILE *curWorking = fopen(filePath, "rb");
+            char *curBlobHash = theirsFiles->files[i]->hash;
 
-)
+            char blobPath[512];
+            snprintf(blobPath, sizeof blobPath, ".mockgit/blobs/%s", curBlobHash);
+            
+        }
 
+    }
+    else if (diffFileChecker(theirsCommit, lcaCommit) && !diffFileChecker(oursCommit, lcaCommit)) {
+        HashTable *oursFiles = filesToMerge(oursCommit);
+    }
+    else {
+        printf("Conflict detected, manual resolution required.\n");
+        return 1;
+    }
+
+    fclose(lcaCommit);
+    fclose(oursCommit);
+    fclose(theirsCommit);
+    free(lcaPath); free(oursPath); free(theirsPath);
     //restore from
     return 0;
 }
