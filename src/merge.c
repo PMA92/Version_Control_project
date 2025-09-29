@@ -26,7 +26,30 @@ static HashTable* filesToMerge(FILE *commitFile){
     return blobAndHash;
 }
 
-static int diffFileChecker(FILE* f1, FILE* f2) {
+static void findContentToWriteToWorking(HashTable *table){
+    for (int i = 0; i < table->currentTableSize; i++) {
+        char filePath[512];
+        char *curWorkingPath = table->files[i]->filename;
+        snprintf(filePath, sizeof(filePath), "src/%s", curWorkingPath);
+        
+        FILE *curWorking = fopen(filePath, "w");
+        char *curBlobHash = table->files[i]->hash;
+        char blobPath[512];
+        snprintf(blobPath, sizeof blobPath, ".mockgit/blobs/%s", curBlobHash);
+        FILE *curBlob = fopen(blobPath, "rb");
+        if (!curBlob || !curWorking){
+            perror("Error opening blob or working file");
+            break;
+        }
+        //write last blob for each file in commit to working files
+        int c;
+        while ((c = fgetc(curBlob)) != EOF){
+            fputc(c, curWorking);
+        }
+    }
+}
+
+/*static int diffFileChecker(FILE* f1, FILE* f2) {
     for (int i = 0; i != EOF; i++){
         int ch1 = fgetc(f1);
         int ch2 = fgetc(f2);
@@ -35,7 +58,7 @@ static int diffFileChecker(FILE* f1, FILE* f2) {
         }
     }
     return 0;
-}
+}*/
 
 static int read_parent_of(const char *commitHash, char *outParent, size_t outsz) {
     char path[512];
@@ -140,10 +163,14 @@ int merge(char *branchname) {
     }
 
     printf("Last common commit (LCA) with '%s': %s\n", branchname, lca);
+    printf("test");
     freeTable(seen);
 
     //parse three blobs (BASE = LCA, OURS = HEAD tip, THEIRS = other branch tip)
-    
+    printf("trest");
+    printf(lca);
+    printf(oursTip);
+    printf(theirsTip);
 
     size_t pathLength = strlen(".mockgit/commits/") + 65;
     char *lcaPath = malloc(pathLength); char *oursPath = malloc(pathLength); char *theirsPath = malloc(pathLength);
@@ -156,7 +183,7 @@ int merge(char *branchname) {
     FILE *oursCommit = fopen(oursPath, "r");
     FILE *theirsCommit = fopen(theirsPath, "r");
 
-
+    printf("commits good");
 
     if (!oursCommit || !theirsCommit || !lcaCommit) {
         perror("Invalid file open, terminating");
@@ -170,28 +197,26 @@ int merge(char *branchname) {
 
     If THEIRS == BASE and OURS != BASE → take OURS as the result.
     */
-    if (diffFileChecker(oursCommit, theirsCommit) ) {
+
+    HashTable *lcaTbl = filesToMerge(lcaCommit);
+    HashTable *oursTbl = filesToMerge(oursCommit);
+    HashTable *theirsTbl = filesToMerge(theirsCommit);
+
+    const char *lcaHash = lcaTbl->files[0]->hash;
+    const char *oursHash = oursTbl->files[0]->hash;
+    const char *theirsHash = theirsTbl->files[0]->hash;
+
+
+    if (strcmp(oursHash, theirsHash) == 0) {
         printf("Branch matches working directory, nothing to do.\n");
         return 0;
     }
-    else if (diffFileChecker(oursCommit, lcaCommit) && !diffFileChecker(theirsCommit, lcaCommit)) {
-        HashTable *theirsFiles = filesToMerge(theirsCommit);
-        for (int i = 0; i < theirsFiles->currentTableSize; i++) {
-            char filePath[512];
-            char *curWorkingPath = theirsFiles->files[i]->filename;
-            snprintf(filePath, sizeof(filePath), ".mockgit/blobs/%s", curWorkingPath);
-            
-            FILE *curWorking = fopen(filePath, "rb");
-            char *curBlobHash = theirsFiles->files[i]->hash;
-
-            char blobPath[512];
-            snprintf(blobPath, sizeof blobPath, ".mockgit/blobs/%s", curBlobHash);
-            
-        }
+    else if (strcmp(oursHash, lcaHash) == 0 && strcmp(theirsHash, lcaHash) != 0) {
+        findContentToWriteToWorking(theirsTbl);
 
     }
-    else if (diffFileChecker(theirsCommit, lcaCommit) && !diffFileChecker(oursCommit, lcaCommit)) {
-        HashTable *oursFiles = filesToMerge(oursCommit);
+    else if (strcmp(theirsHash, lcaHash) == 0 && strcmp(oursHash, lcaHash) != 0) {
+        findContentToWriteToWorking(oursTbl);
     }
     else {
         printf("Conflict detected, manual resolution required.\n");
