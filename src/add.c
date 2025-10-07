@@ -137,6 +137,18 @@ int removeFile(HashTable *table, char *filename){
     return 0;
 }
 
+void printTable(HashTable *table){
+    if (table == NULL || table->files == NULL) {
+        fprintf(stderr, "Table is not initialized.\n");
+        return;
+    }
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        if (table->files[i] != NULL) {
+            printf("File: %s | Hash: %s\n", table->files[i]->filename, table->files[i]->hash);
+        }
+    }
+}
+
 char *hashToBlob(FILE *file, unsigned char *buffer, unsigned char **outContent, long *outContentLen){    
     if (!file) {
         perror("Error opening file");

@@ -1,4 +1,4 @@
-CC=cc
+CC=cc -g
 CFLAGS=-Iinclude -Wall -I/opt/homebrew/opt/openssl@3/include 
 LDFLAGS=-L/opt/homebrew/opt/openssl@3/lib -lcrypto
 
