@@ -70,8 +70,8 @@ char *searchTable(HashTable *table, char *filename){
         //line above commented out for sake of status command
         return NULL;
     }
-    if (strcmp(table->files[tableHash]->filename, filename) == 0) {
-        return table->files[tableHash]->filename;
+    if (strcmp(table->files[tableHash]->filename, filename) == 0 && strcmp(table->files[tableHash]->hash, "") != 0) {
+        return table->files[tableHash]->hash;
     }
     return NULL;
 }

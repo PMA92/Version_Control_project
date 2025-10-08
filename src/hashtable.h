@@ -20,5 +20,6 @@ int insertItem(HashTable *table, char *filename, char *blobHash);
 char *searchTable(HashTable *table, char *filename);
 int removeFile(HashTable *table, char *filename);
 void printTable(HashTable *table);
+unsigned int hash(const char *key);
 
 #endif

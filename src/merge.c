@@ -29,13 +29,23 @@ void push(Vector *vec, char *val){
         vec->capacity = vec->capacity ? vec->capacity * 2 : 4;
     }
     vec->data = realloc(vec->data, sizeof(char*) * vec->capacity);
+    if (!vec->data) { perror("realloc"); exit(1); }
     vec->data[vec->len++] = strdup(val);
 }
 
 static void movePathsToVector(HashTable *table, Vector *out){
     if (!table) return;
-    for (int i=0; i<table->currentTableSize; ++i){
-        if (table->files[i] && table->files[i]->filename) push(out, table->files[i]->filename);
+    printTable(table);
+    printf("current table size is %d\n", table->currentTableSize);
+    int i=0;
+    int count = 0;
+    while (count < table->currentTableSize || i < TABLE_SIZE){
+        if (table->files[i] && table->files[i]->filename) {
+            push(out, table->files[i]->filename);
+            printf("pushed %s\n", table->files[i]->filename);
+            count++;
+        }
+        i++;
     }
 }
 
@@ -57,6 +67,7 @@ static size_t sortVector(Vector *v){
     for (size_t i=1; i<v->len; ++i){
         if (strcmp(v->data[i], v->data[dups-1])){
             v->data[dups++] = v->data[i];
+            printf("dups adding one");
         } else {
             free(v->data[i]);
         }
@@ -68,6 +79,7 @@ static size_t sortVector(Vector *v){
 
 
 static int write_blob_to_working(const char *workPath, const char *blobHash){
+    printf("Writing blob %s to working path %s\n", blobHash, workPath);
     if (!workPath || !blobHash) return -1;
     char blobPath[512];
     snprintf(blobPath, sizeof blobPath, ".mockgit/blobs/%s", blobHash);
@@ -90,6 +102,7 @@ static int write_blob_to_working(const char *workPath, const char *blobHash){
 }
 
 static HashTable* filesToMerge(FILE *commitFile){
+    rewind(commitFile);
     char line[512];
     HashTable *blobAndHash = createTable();
     while (fgets(line, sizeof(line), commitFile)) {
@@ -226,7 +239,9 @@ int merge(char *branchname) {
     
     if (!oursCommit || !theirsCommit || !lcaCommit) {
         perror("Invalid file open, terminating");
-        return 0;
+        fclose(lcaCommit); fclose(oursCommit); fclose(theirsCommit);
+        free(lcaPath); free(oursPath); free(theirsPath);
+        return 1;
     }
 
     /*
@@ -247,12 +262,16 @@ int merge(char *branchname) {
     movePathsToVector(theirsTbl, &paths);
     sortVector(&paths);
 
-
+    printf("files to go through: %zu\n", paths.len);
     for (size_t i=0; i<paths.len; ++i){
         char *curPath = paths.data[i];
         char *lcaHash = searchTable(lcaTbl, curPath);
         char *oursHash = searchTable(oursTbl, curPath);
         char *theirsHash = searchTable(theirsTbl, curPath);
+
+        printf("lcaHash is %s\n", lcaHash);
+        printf("oursHash is %s\n", oursHash);
+        printf("theirsHash is %s\n", theirsHash);
 
         int sameBaseAndBranch = (lcaHash && theirsHash) ? strcmp(lcaHash, theirsHash) == 0 : (lcaHash == theirsHash);
         int sameMainAndBase = (lcaHash && oursHash) ? strcmp(lcaHash, oursHash) == 0 : (lcaHash == oursHash);
@@ -263,27 +282,35 @@ int merge(char *branchname) {
             printf("Branch is the same as main, nothing to merge");
         } else if (sameMainAndBase && !sameBaseAndBranch) {
             // take theirs
+            printf("mananbase and base and branch");
             if (theirsHash){
+                printf("Merging %s from branch %s into current branch\n", curPath, branchname);
                 write_blob_to_working(curPath, theirsHash);
             }
         } else if (sameBaseAndBranch && !sameMainAndBase) {
             // take ours
+            printf("base and branch and not main and base");
             if (oursHash){
+                printf("Keeping %s from current branch\n", curPath);
                 write_blob_to_working(curPath, oursHash);
             }
         } else {
             // merge conflict
             printf("Merge conflict in %s\n", curPath);
+            return 1;
         }
     }
     
+    head = fopen(".mockgit/HEAD", "w");
+    fprintf(head, "branches/master");
+    fclose(head);
+    remove(branchPath);
 
     fclose(lcaCommit);
     fclose(oursCommit);
     fclose(theirsCommit);
     free(lcaPath); free(oursPath); free(theirsPath);
     //restore from
-    return 0;
     freeVector(&paths);
-   
+    return 0;   
 }
