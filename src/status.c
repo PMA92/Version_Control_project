@@ -6,6 +6,16 @@
 #include <dirent.h>
 #include <openssl/sha.h>
 
+char *readFirstLine(FILE *f){
+    char line[512];
+    if (fgets(line, sizeof(line), f) != NULL){
+        line[strcspn(line, "\n")] = 0; // Remove newline character
+        return strdup(line);
+    }
+    rewind(f);
+    return NULL;
+}
+
 void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commitedTable, 
     char ***stagedFiles, size_t *stagedCount, char ***modifiedFiles, 
     size_t *modifiedCount, char ***untrackedFiles, size_t *untrackedCount, unsigned char *hash_buffer, unsigned char **outContent, long *outContentLen) {
@@ -85,14 +95,26 @@ int status() {
         return 1;   
     }
 
-    if (fgets(latestCommitHash, sizeof(latestCommitHash), head) != NULL){
-        latestCommitHash[strcspn(latestCommitHash, "\n")] = 0; // Remove newline character
+    char *temp = readFirstLine(head);
+    strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
+    free(temp);
+    if (latestCommitHash){
     } else {
         perror("Failed to read HEAD file");
         fclose(indexFile);
         fclose(head);
         return 1;
     }
+
+    FILE *curBranch = fopen(latestCommitHash, "r");
+    latestCommitHash[0] = '\0';
+    if (curBranch){
+        temp = readFirstLine(curBranch);
+        strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
+    }
+    
+    printf(latestCommitHash);
+    fclose(curBranch);
 
     char latestCommitFilePath[128];
     sprintf(latestCommitFilePath, ".mockgit/commits/%s", latestCommitHash);
