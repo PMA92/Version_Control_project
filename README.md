@@ -40,6 +40,8 @@ mockgit status
 
 mockgit branch <branch-name>
 
+creates a branch but doesn't move you into it. You must use checkout to move between branches.
+
 # Checkout to a branch or commit
 
 mockgit checkout <branch-name|commit-hash>

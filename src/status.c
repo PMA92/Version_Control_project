@@ -98,13 +98,7 @@ int status() {
     char *temp = readFirstLine(head);
     strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
     free(temp);
-    if (latestCommitHash){
-    } else {
-        perror("Failed to read HEAD file");
-        fclose(indexFile);
-        fclose(head);
-        return 1;
-    }
+
 
     FILE *curBranch = fopen(latestCommitHash, "r");
     latestCommitHash[0] = '\0';
@@ -113,7 +107,6 @@ int status() {
         strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
     }
     
-    printf(latestCommitHash);
     fclose(curBranch);
 
     char latestCommitFilePath[128];

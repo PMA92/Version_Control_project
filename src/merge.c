@@ -36,13 +36,11 @@ void push(Vector *vec, char *val){
 static void movePathsToVector(HashTable *table, Vector *out){
     if (!table) return;
     printTable(table);
-    printf("current table size is %d\n", table->currentTableSize);
     int i=0;
     int count = 0;
     while (count < table->currentTableSize || i < TABLE_SIZE){
         if (table->files[i] && table->files[i]->filename) {
             push(out, table->files[i]->filename);
-            printf("pushed %s\n", table->files[i]->filename);
             count++;
         }
         i++;
@@ -67,7 +65,6 @@ static size_t sortVector(Vector *v){
     for (size_t i=1; i<v->len; ++i){
         if (strcmp(v->data[i], v->data[dups-1])){
             v->data[dups++] = v->data[i];
-            printf("dups adding one");
         } else {
             free(v->data[i]);
         }
@@ -79,7 +76,6 @@ static size_t sortVector(Vector *v){
 
 
 static int write_blob_to_working(const char *workPath, const char *blobHash){
-    printf("Writing blob %s to working path %s\n", blobHash, workPath);
     if (!workPath || !blobHash) return -1;
     char blobPath[512];
     snprintf(blobPath, sizeof blobPath, ".mockgit/blobs/%s", blobHash);
@@ -269,9 +265,6 @@ int merge(char *branchname) {
         char *oursHash = searchTable(oursTbl, curPath);
         char *theirsHash = searchTable(theirsTbl, curPath);
 
-        printf("lcaHash is %s\n", lcaHash);
-        printf("oursHash is %s\n", oursHash);
-        printf("theirsHash is %s\n", theirsHash);
 
         int sameBaseAndBranch = (lcaHash && theirsHash) ? strcmp(lcaHash, theirsHash) == 0 : (lcaHash == theirsHash);
         int sameMainAndBase = (lcaHash && oursHash) ? strcmp(lcaHash, oursHash) == 0 : (lcaHash == oursHash);

@@ -3,6 +3,16 @@
 #include <string.h>
 #include <unistd.h>
 
+int fileExists(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (f != NULL) {
+        fclose(f);
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
 
 int branch(char *branchName) {
     FILE *head = fopen(".mockgit/HEAD", "r+");
@@ -15,7 +25,6 @@ int branch(char *branchName) {
         char filePath[256];
         headLine[strcspn(headLine, "\n")] = 0;
         branchName[strcspn(branchName, "\n")] = 0; // Remove newline character if present
-        printf("headLine: %s", headLine);
         if (strncmp(headLine, "branches/", 9) == 0) {
             char currentBranchPath[256];
             snprintf(currentBranchPath, sizeof(currentBranchPath), ".mockgit/%s", headLine);
@@ -30,6 +39,12 @@ int branch(char *branchName) {
             }
             branchHash[strcspn(branchHash, "\n")] = 0; // Remove
             snprintf(filePath, sizeof(filePath), "./.mockgit/branches/%s", branchName);
+            if (fileExists(filePath)) {
+                fprintf(stderr, "Error: Branch '%s' already exists.\n", branchName);
+                fclose(currentBranch);
+                fclose(head);
+                return 1;
+            }
             FILE *newBranch = fopen(filePath, "w");
             if (!newBranch) {
                 perror("Error creating new branch file");
@@ -50,6 +65,11 @@ int branch(char *branchName) {
 
             // Create new branch file
             snprintf(filePath, sizeof(filePath), "./.mockgit/branches/%s", branchName);
+            if (fileExists(filePath)) {
+                fprintf(stderr, "Error: Branch '%s' already exists.\n", branchName);
+                fclose(head);
+                return 1;
+            }
             FILE *newBranch = fopen(filePath, "w");
             if (!newBranch) {
                 perror("Error creating new branch file");
