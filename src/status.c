@@ -23,6 +23,12 @@ void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commite
     if (strncmp(thisDir, "./.mockgit", 10) == 0) {
         return; // Skip the .mockgit directory
     }
+    else if (strncmp(thisDir, "./src", 5) == 0) {
+        return; // Skip the .mockgit directory
+    }
+    else if (strncmp(thisDir, "./.git", 6) == 0){
+        return;
+    }
     DIR *workingDir = opendir(thisDir);
     struct dirent *entry;
     
@@ -37,7 +43,7 @@ void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commite
             processFileSearch(fullPath, stagedTable, commitedTable, stagedFiles, stagedCount, modifiedFiles, modifiedCount, untrackedFiles, untrackedCount, hash_buffer, outContent, outContentLen);
         }
         else {
-            char *curFilename = fullPath;
+            char *curFilename = entry->d_name;
             if (strncmp(curFilename, "./", 2) == 0) {
                 curFilename += 2;
             }
@@ -47,7 +53,7 @@ void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commite
                 continue;
             }
             char *curFileHash = hashToBlob(curFile, hash_buffer, outContent, outContentLen);
-            fclose(curFile);
+ 
             if (searchTable(stagedTable, curFilename) != NULL) {
                 if (searchTable(commitedTable, curFilename) == NULL) {
                     *stagedFiles = realloc(*stagedFiles, sizeof(char*) * (*stagedCount + 1));
@@ -55,7 +61,8 @@ void processFileSearch(char *thisDir, HashTable *stagedTable, HashTable *commite
                 }
             }
             else if (searchTable(commitedTable, curFilename) != NULL ){  
-                if (strcmp(curFileHash, searchTable(commitedTable, curFilename)) != 0){
+                if (searchTable(stagedTable, curFilename) == NULL) { continue; }
+                if (strcmp(curFileHash, searchTable(stagedTable, curFilename)) != 0){
                     *modifiedFiles = realloc(*modifiedFiles, sizeof(char*) * (*modifiedCount + 1));
                     (*modifiedFiles)[(*modifiedCount)++] = strdup(curFilename);
                 }
@@ -99,18 +106,16 @@ int status() {
     strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
     free(temp);
 
-
-    FILE *curBranch = fopen(latestCommitHash, "r");
-    latestCommitHash[0] = '\0';
+    char commitPath[256];
+    sprintf(commitPath, ".mockgit/%s", latestCommitHash);
+    FILE *curBranch = fopen(commitPath, "r");
     if (curBranch){
-        temp = readFirstLine(curBranch);
-        strncpy(latestCommitHash, temp, sizeof(latestCommitHash)-1);
+        strcpy(commitPath, readFirstLine(curBranch));
+        fgets(latestCommitHash, sizeof(line), curBranch);
     }
-    
-    fclose(curBranch);
 
     char latestCommitFilePath[128];
-    sprintf(latestCommitFilePath, ".mockgit/commits/%s", latestCommitHash);
+    snprintf(latestCommitFilePath, sizeof latestCommitFilePath, ".mockgit/%s", latestCommitHash);
     FILE *latestCommit = fopen(latestCommitFilePath, "r");
 
     if (!latestCommit) {
@@ -120,9 +125,16 @@ int status() {
         return 1;
     }
 
+    char commitFile[256];
+    fgets(commitFile, sizeof(commitFile), latestCommit);
+    sprintf(latestCommitFilePath, ".mockgit/commits/%s", commitFile);
+    latestCommitFilePath[strcspn(latestCommitFilePath, "\n")] = 0;
+
+    fclose(latestCommit);
+    FILE *currentCommit = fopen(latestCommitFilePath, "r");
     HashTable *commitedTable = createTable();
-    if (latestCommit){
-        while (fgets(line, sizeof(line), latestCommit)){
+    if (currentCommit){
+        while (fgets(line, sizeof(line), currentCommit)){
             if (sscanf(line, "File %*d: %127s %64s", filename, hash) == 2) {
                 insertItem(commitedTable, filename, hash);
             } 
@@ -186,7 +198,7 @@ int status() {
     freeTable(commitedTable);
     freeTable(stagedTable);
     fclose(indexFile);
-    fclose(latestCommit);
+    fclose(currentCommit);
     fclose(head);
     return 0;
 }
