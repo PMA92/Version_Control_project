@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <dirent.h>
 #include "init.h"
 
 #define MAX_BRANCH_LEN     128
@@ -16,6 +17,29 @@ static int validate_len(const char *label, const char *s, size_t max) {
         return 0;
     }
     return 1;
+}
+
+void print_branches() {
+    DIR* directory;
+    struct dirent* entry;
+
+    // Open the directory
+    directory = opendir(".mockgit/branches");
+    if (directory == NULL) {
+        perror("Failed to open directory");
+        return;
+    }
+
+    // Read and print each entry (file or folder)
+    while ((entry = readdir(directory)) != NULL) {
+        // Skip the special entries "." (current directory) and ".." (parent directory)
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            printf("%s\n", entry->d_name);
+        }
+    }
+
+    // Close the directory
+    closedir(directory);
 }
 
 int main(int argc, char *argv[]) {
@@ -53,7 +77,10 @@ int main(int argc, char *argv[]) {
 
     // branch <name>
     if (strcmp(cmd, "branch") == 0) {
-        if (argc != 3) { printf("Usage: mockgit branch <name>\n"); return 1; }
+        if (argc == 2) { 
+            print_branches();
+            return 0;
+        }
         if (!validate_len("branch name", argv[2], MAX_BRANCH_LEN)) return 1;
         return branch(argv[2]);
     }
