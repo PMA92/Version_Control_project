@@ -9,12 +9,19 @@ int logCommits() {
         return 1;
     }
 
-    char headHash[65];
-    if (fscanf(head, "%64s", headHash) != 1) {
+    char headHash[128];
+    char branchPath[256];
+
+    fgets(branchPath, sizeof(branchPath), head);
+    sprintf(headHash, ".mockgit/%s", branchPath);
+    FILE *branch = fopen(headHash, "r");
+
+    if (fscanf(branch, "%64s", headHash) != 1) {
         perror("Error reading HEAD hash");
         fclose(head);
         return 1;
     }
+
     fclose(head);
 
     char *log = malloc(1);
