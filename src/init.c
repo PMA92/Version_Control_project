@@ -45,6 +45,14 @@ int makeInitFiles()
 
     fclose(index);
 
+    if (chmod("setup.sh", 0664) != 0){
+        printf("failed to use simplifer shortcut, continue to use commands with ./mockgit");
+    }
+    else {
+        system("./setup.sh");
+    }
+
+
     printf("Initalized empty mockgit repository in .mockgit\n");
     return 0;
 }

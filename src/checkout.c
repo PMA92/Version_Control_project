@@ -13,6 +13,8 @@ void strip_nl(char *s) {
     while (n && (s[n-1] == '\n' || s[n-1] == '\r')) s[--n] = '\0';
 }
 
+
+//note that this supports a detached head state incase future implementations require it
 int updateWorkingDirectory(char *headRef){
     char commitFile[512] = {0};
     /* Resolve to a commit file path */
